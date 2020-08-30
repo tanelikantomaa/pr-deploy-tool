@@ -1,0 +1,68 @@
+version: "3"
+
+services:
+  #PHP Service
+
+  cashcalc-php-base:
+    build:
+      context: ../
+      dockerfile: ./docker/php-base/Dockerfile
+    image: 838837044885.dkr.ecr.eu-west-2.amazonaws.com/pr-deploy-tool/php-base:7.3
+  
+  cashcalc-php:
+    build:
+      context: ../
+      dockerfile: ./docker/php/Dockerfile
+    image: 838837044885.dkr.ecr.eu-west-2.amazonaws.com/pr-deploy-tool/php:latest
+    container_name: pr-deploy-tool-php
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./:/var/www/html
+    working_dir: /var/www/html
+    networks:
+      - app-network
+
+  #Nginx Service
+  webserver:
+    build:
+      context: .
+      dockerfile: ./docker/nginx/Dockerfile
+    image: 838837044885.dkr.ecr.eu-west-2.amazonaws.com/pr-deploy-tool/nginx:latest
+    container_name: pr-deploy-tool-nginx
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - "8080:80"
+    networks:
+      - app-network
+
+  #MySQL Service
+  db:
+    image: mysql:5.7.22
+    container_name: pr-deploy-tool-db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "33061:3306"
+    volumes:
+      - pr-deploy-tool-db:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: pr-deploy-tool
+      MYSQL_ROOT_PASSWORD: root
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    networks:
+      - app-network
+
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
+
+#Volumes
+volumes:
+  cashcalc-db:
+    driver: local
