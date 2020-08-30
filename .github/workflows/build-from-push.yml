@@ -1,0 +1,40 @@
+name: Master - Build and push application to ECR
+on:
+  push:
+    branches:
+      - master
+jobs:
+  release_build_push_manager_app:
+    runs-on: ubuntu-latest
+    name: Build application Docker image and push to ECR
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          fetch-depth: '0'
+        
+      - name: Bump version and push tag
+        id: tagging
+        if: contains(github.ref, 'master')
+        uses: anothrNick/github-tag-action@1.21.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
+          INITIAL_VERSION: 1.5.0
+          RELEASE_BRANCHES: master
+
+      - name: Build Docker image and Push to ECR
+        uses: kciter/aws-ecr-action@v1
+        env:
+          repo: pr-deploy-tool
+        with:
+          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+          dockerfile: ./docker/app/Dockerfile
+          path: ./
+          # extra_build_args: "--build-arg rails_master_key=${{ secrets.RAILS_MASTER_KEY}} --build-arg rails_env=production"
+          repo: ${{ env.repo }}
+          region: eu-west-2
+          tags: ${{ steps.tagging.outputs.new_tag }}
+          create_repo: false
